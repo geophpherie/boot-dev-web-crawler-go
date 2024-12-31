@@ -17,5 +17,13 @@ func normalizeURL(inputUrl string) (string, error) {
 	}
 
 	outUrl = strings.TrimRight(outUrl, "/")
+
+	outUrl = strings.ToLower(outUrl)
+
 	return outUrl, nil
 }
+
+//
+// func getURLsFromHTML(htmlBody, rawBaseURL string) ([]string, error) {
+//
+// }
