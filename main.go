@@ -2,8 +2,13 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"os"
+	"sync"
 )
+
+const MAX_CONCURRENCY = 5
+const MAX_PAGES = 25
 
 func main() {
 	args := os.Args[1:]
@@ -16,18 +21,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	baseURL := args[0]
-
-	fmt.Printf("starting crawl of: %v\n", baseURL)
-
-	pages := make(map[string]int)
-	pages, err := crawlPage(baseURL, baseURL, pages)
+	baseURL, err := url.Parse(args[0])
 	if err != nil {
-		fmt.Printf("crawl failed %v\n", err)
+		fmt.Printf("invalid starting url %v\n", err)
 		os.Exit(1)
 	}
 
-	for k, v := range pages {
+	cfg := config{
+		pages:              make(map[string]int),
+		baseURL:            baseURL,
+		mu:                 &sync.Mutex{},
+		concurrencyControl: make(chan struct{}, MAX_CONCURRENCY),
+		wg:                 &sync.WaitGroup{},
+		maxPages:           MAX_PAGES,
+	}
+
+	fmt.Printf("starting crawl of: %v\n", baseURL)
+	cfg.wg.Add(1)
+	go cfg.crawlPage(baseURL.String())
+	cfg.wg.Wait()
+
+	for k, v := range cfg.pages {
 		fmt.Println(k, v)
 	}
 
