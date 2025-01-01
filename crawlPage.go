@@ -37,6 +37,13 @@ func (cfg *config) crawlPage(rawCurrentURL string) error {
 		cfg.wg.Done()
 	}()
 
+	cfg.mu.Lock()
+	if len(cfg.pages) >= cfg.maxPages {
+		cfg.mu.Unlock()
+		return nil
+	}
+	cfg.mu.Unlock()
+
 	fmt.Printf("Crawling %v\n", rawCurrentURL)
 	// make sure on same domain
 	currentUrl, err := url.Parse(rawCurrentURL)
@@ -71,7 +78,6 @@ func (cfg *config) crawlPage(rawCurrentURL string) error {
 		return err
 	}
 
-	fmt.Println(urls)
 	// crawl any urls
 	for _, url := range urls {
 		cfg.wg.Add(1)

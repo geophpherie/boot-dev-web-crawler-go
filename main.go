@@ -1,14 +1,18 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
 	"net/url"
 	"os"
+	"slices"
+	"strconv"
+	"strings"
 	"sync"
 )
 
-const MAX_CONCURRENCY = 5
-const MAX_PAGES = 25
+var MAX_CONCURRENCY int
+var MAX_PAGES int
 
 func main() {
 	args := os.Args[1:]
@@ -16,10 +20,15 @@ func main() {
 	if len(args) < 1 {
 		fmt.Println("no website provided")
 		os.Exit(1)
-	} else if len(args) > 1 {
-		fmt.Println("too many arguments provided")
-		os.Exit(1)
+	} else if len(args) == 1 {
+		MAX_CONCURRENCY = 5
+		MAX_PAGES = 20
+	} else {
+		MAX_CONCURRENCY, _ = strconv.Atoi(args[1])
+		MAX_PAGES, _ = strconv.Atoi(args[2])
 	}
+
+	fmt.Println(MAX_CONCURRENCY, MAX_PAGES)
 
 	baseURL, err := url.Parse(args[0])
 	if err != nil {
@@ -41,8 +50,35 @@ func main() {
 	go cfg.crawlPage(baseURL.String())
 	cfg.wg.Wait()
 
+	fmt.Printf(`
+=============================
+  REPORT for %v
+=============================
+`, cfg.baseURL.String())
+
+	reportLinks := []reportLink{}
+
 	for k, v := range cfg.pages {
-		fmt.Println(k, v)
+		reportLinks = append(reportLinks, reportLink{count: v, url: k})
 	}
 
+	slices.SortFunc(reportLinks, func(a, b reportLink) int {
+		// negative when a < b
+		// positive when a > b
+		// 0 when a ==b
+		if n := cmp.Compare(b.count, a.count); n != 0 {
+			return n
+		}
+
+		return strings.Compare(a.url, b.url)
+	})
+
+	for _, l := range reportLinks {
+		fmt.Printf("Found %v internal links to %v\n", l.count, l.url)
+	}
+}
+
+type reportLink struct {
+	count int
+	url   string
 }
